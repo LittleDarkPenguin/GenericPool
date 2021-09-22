@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class ObjectPool<T, P> : MonoBehaviour where P : Enemy
+public abstract class ObjectPool<T, P> : MonoBehaviour where P : Component
 {
     protected Dictionary<T, Queue<P>> pool = new Dictionary<T, Queue<P>>();
     protected List<T> keys;
