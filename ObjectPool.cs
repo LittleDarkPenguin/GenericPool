@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public abstract class ObjectPool2<P> : MonoBehaviour where P : Component
+public abstract class ObjectPool<P> : MonoBehaviour where P : Component
 {
     [SerializeField] protected P[] objPrefabs;
     [SerializeField] protected int initialAmount = 10;
