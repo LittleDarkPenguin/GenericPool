@@ -14,21 +14,21 @@ public abstract class ObjectPool<P> : MonoBehaviour where P : Component
     {
         foreach (var enemy in objPrefabs)
         {
-            InitialFill(enemy, transform, initialAmount);
+            InitialFill(enemy, initialAmount);
         }
         keys = new List<System.Type>(pool.Keys);
     }
 
-    private void InitialFill(P prefab, Transform parent, int amount = 10)
+    private void InitialFill(P prefab, int amount = 10)
     {
-        var t = prefab.GetType();
-        if (!pool.ContainsKey(t))
+        var type = prefab.GetType();
+        if (!pool.ContainsKey(type))
         {
-            pool.Add(t, new Queue<P>());
+            pool.Add(type, new Queue<P>());
             for (int i = 0; i < amount; i++)
             {
-                P obj = Instantiate(prefab, Vector3.zero, Quaternion.identity, parent);
-                pool[t].Enqueue(obj);
+                P obj = Instantiate(prefab, Vector3.zero, Quaternion.identity, transform);
+                pool[type].Enqueue(obj);
                 obj.gameObject.SetActive(false);
             }
         }
@@ -39,19 +39,20 @@ public abstract class ObjectPool<P> : MonoBehaviour where P : Component
 
     }
 
-    public void ReturnObjectToPool(P component)
+    public void ReturnObjectToPool(P obj)
     {
-        if (pool.TryGetValue(component.GetType(), out Queue<P> queue))
+        var type = obj.GetType();
+        if (pool.TryGetValue(type, out Queue<P> queue))
         {
-            component.gameObject.SetActive(false);
-            queue.Enqueue(component);
+            obj.gameObject.SetActive(false);
+            queue.Enqueue(obj);
         }
         else
         {
-            Debug.Log($"Returning object with non existing type in pool |{component}|, adding new queue");
+            Debug.Log($"Returning object with non existing type in pool |{type}|, adding new queue");
             var newQueue = new Queue<P>();
-            pool.Add(component.GetType(), newQueue);
-            pool[component.GetType()].Enqueue(component);
+            pool.Add(type, newQueue);
+            pool[type].Enqueue(obj);
         }
     }
 
@@ -68,7 +69,7 @@ public abstract class ObjectPool<P> : MonoBehaviour where P : Component
             else
             {
                 Debug.Log($"Queue for |{type}| almost empty, creating new obj for it");
-                P obj = Instantiate(queue.Peek(), Vector3.zero, Quaternion.identity);
+                P obj = Instantiate(queue.Peek(), Vector3.zero, Quaternion.identity, transform);
                 return obj;
             }
         }
