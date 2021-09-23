@@ -1,45 +1,61 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
-public abstract class ObjectPool<T, P> : MonoBehaviour where P : Component
+public abstract class ObjectPool2<P> : MonoBehaviour where P : Component
 {
-    protected Dictionary<T, Queue<P>> pool = new Dictionary<T, Queue<P>>();
-    protected List<T> keys;
-
-    protected void InitialFill(T type, P prefab, Transform parent, int amount = 10)
+    [SerializeField] protected P[] objPrefabs;
+    [SerializeField] protected int initialAmount = 10;
+    
+    private Dictionary<System.Type, Queue<P>> pool = new Dictionary<System.Type, Queue<P>>();
+    private List<System.Type> keys;
+    
+    private void Awake()
     {
-        if (!pool.ContainsKey(type))
+        foreach (var enemy in objPrefabs)
         {
-            pool.Add(type, new Queue<P>());
+            InitialFill(enemy, transform, initialAmount);
+        }
+        keys = new List<System.Type>(pool.Keys);
+    }
+
+    private void InitialFill(P prefab, Transform parent, int amount = 10)
+    {
+        var t = prefab.GetType();
+        if (!pool.ContainsKey(t))
+        {
+            pool.Add(t, new Queue<P>());
             for (int i = 0; i < amount; i++)
             {
                 P obj = Instantiate(prefab, Vector3.zero, Quaternion.identity, parent);
-                pool[type].Enqueue(obj);
+                pool[t].Enqueue(obj);
                 obj.gameObject.SetActive(false);
             }
         }
         else
         {
-            Debug.LogError($"Trying to add existing type |{type}| to pool, skipping");
+            Debug.LogError($"Trying to add existing type |{prefab}| to pool, skipping");
         }
+
     }
 
-    protected void ReturnObjectToPool(P component, T type)
+    public void ReturnObjectToPool(P component)
     {
-        if (pool.TryGetValue(type, out Queue<P> queue))
+        if (pool.TryGetValue(component.GetType(), out Queue<P> queue))
         {
             component.gameObject.SetActive(false);
             queue.Enqueue(component);
         }
         else
         {
-            Debug.Log($"Returning object with non existing type in pool |{type}|, adding new queue");
-            pool.Add(type, new Queue<P>());
-            pool[type].Enqueue(component);
+            Debug.Log($"Returning object with non existing type in pool |{component}|, adding new queue");
+            var newQueue = new Queue<P>();
+            pool.Add(component.GetType(), newQueue);
+            pool[component.GetType()].Enqueue(component);
         }
     }
 
-    public P TryGetObjectByType(T type)
+    private P TryGetObjectByType(System.Type type)
     {
         if (pool.TryGetValue(type, out Queue<P> queue))
         {
