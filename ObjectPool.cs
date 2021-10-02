@@ -42,7 +42,6 @@ public class ObjectPool<P> : MonoBehaviour where P : MonoBehaviour
 
     private bool TryGetQueueForType(P type, out Queue<P> queue)
     {
-		// Really dont like this
         queue = null;
         foreach (var key in pool.Keys)
         {
@@ -55,26 +54,24 @@ public class ObjectPool<P> : MonoBehaviour where P : MonoBehaviour
         return false;
     }
     
-    private P TryGetObjectByType(P type)
+    private bool TryGetObjectByType(P type, out P obj)
     {
+        obj = null;
         if (TryGetQueueForType(type, out var queue))
         {
             if (queue.Count > 1)
             {
-                var obj = queue.Dequeue();
-                obj.gameObject.SetActive(true);
-                return obj;
+                obj = queue.Dequeue();
             }
             else
             {
                 Debug.Log($"Queue for |{type}| almost empty, creating new obj for it");
-                var obj = Instantiate(queue.Peek(), Vector3.zero, Quaternion.identity, transform);
-                obj.gameObject.SetActive(true);
-                return obj;
+                obj = Instantiate(queue.Peek(), Vector3.zero, Quaternion.identity, transform);
             }
+            return true;
         }
         Debug.LogError($"Asking for non existing object in pool \"{type}\" (what is nearly impossible btw), returning null");
-        return null;
+        return false;
     }
     
     public bool TryGetRandomObject(out P obj)
@@ -86,8 +83,13 @@ public class ObjectPool<P> : MonoBehaviour where P : MonoBehaviour
             return false;
         }
         int randomIndex = Random.Range(0, keys.Count);
-        obj = TryGetObjectByType(keys[randomIndex]);
-        return true;
+        if (TryGetObjectByType(keys[randomIndex], out P randObj))
+        {
+            obj = randObj;
+            obj.gameObject.SetActive(true);
+            return true;
+        }
+        return false;
     }
     
     public void ReturnObjectToPool(P obj)
@@ -115,9 +117,14 @@ public class ObjectPool<P> : MonoBehaviour where P : MonoBehaviour
             Debug.Log("Nothing was found by your request, returning null");
             return false;
         }
-        obj = TryGetObjectByType(type);
-        obj.gameObject.SetActive(true);
-        return true;
+
+        if (TryGetObjectByType(type, out P newObj))
+        {
+            obj = newObj;
+            obj.gameObject.SetActive(true);
+            return true;
+        }
+        return false;
     }
 
     public bool TryGetSpecificObjects(Predicate<P> propertySelector, int amount, out List<P> objects, bool randomize = true)
@@ -137,22 +144,45 @@ public class ObjectPool<P> : MonoBehaviour where P : MonoBehaviour
         {
             for (int i = 0; i < amount; i++)
             {
-                objects.Add(TryGetObjectByType(types[Random.Range(0, types.Count)]));
+                var randomType = types[Random.Range(0, types.Count)];
+                if (TryGetObjectByType(randomType, out P obj))
+                {
+                    objects.Add(obj);
+                }
+                else
+                {
+                    Debug.Log($"Something was broking while trying to get object by type \"{randomType}\"");
+                }
             }
         }
         else
         {
             int amountOfType = amount / types.Count;
-            foreach (var t in types)
+            foreach (var type in types)
             {
                 for (int i = 0; i < amountOfType; i++)
                 {
-                    objects.Add(TryGetObjectByType(t));
+                    if (TryGetObjectByType(type, out P obj))
+                    {
+                        objects.Add(obj);
+                    }
+                    else
+                    {
+                        Debug.Log($"Something was broking while trying to get object by type \"{type}\"");
+                    }
                 }
             }
             if (amount % types.Count != 0)
             {
-                objects.Add(TryGetObjectByType(types[Random.Range(0, types.Count)]));
+                var randomType = types[Random.Range(0, types.Count)];
+                if (TryGetObjectByType(randomType, out P obj))
+                {
+                    objects.Add(obj);
+                }
+                else
+                {
+                    Debug.Log($"Something was broking while trying to get object by type \"{randomType}\"");
+                }
             }
         }
         return true;
